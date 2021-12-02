@@ -1,0 +1,90 @@
+---
+title: "member_profile_report"
+author: "John D. Smith"
+date: "11/29/2021"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+library(stringr)
+library(janitor)
+library(lubridate)
+library(here)
+library(readr)
+library(tidytext)
+```
+
+```{r}
+
+pdx_meetup_members <- 
+  read_csv(here("data", 
+                "Portland-Shambhala-Meditation-Center-Meetup_Member_List_on_2021-11-23.csv"),
+           col_types = "cccnccccnnnnnnncccc") %>% 
+  clean_names() %>% 
+  mutate(joined_group_on = mdy(joined_group_on),
+         last_visited_group_on = mdy(last_visited_group_on),
+         last_attended = mdy(last_attended),
+         url_of_member_profile = as.character(url_of_member_profile))
+
+df <- read_rds(here("data", "group_membership_attended_since_2020.Rds"))
+```
+
+Last visit
+```{r}
+pdx_meetup_members %>% 
+  filter(member_id != 245300246) %>% 
+  ggplot(aes(last_visited_group_on)) + 
+  geom_histogram(bins = 60) 
+```
+
+
+Joined Group
+```{r}
+pdx_meetup_members %>% 
+  filter(member_id != 245300246) %>% 
+  ggplot(aes(joined_group_on)) + 
+  geom_histogram(bins = 60)
+```
+Number of Meetups attended
+```{r}
+pdx_meetup_members %>% 
+  filter(member_id != 245300246) %>% 
+  ggplot(aes(meetups_attended)) + 
+  geom_histogram(bins = 60) +
+  scale_x_log10()
+```
+
+Total RSVPs
+```{r}
+pdx_meetup_members %>% 
+  filter(member_id != 245300246, total_rsv_ps > 0) %>% 
+  ggplot(aes(total_rsv_ps)) + 
+  geom_histogram(bins = 60) +
+  scale_x_log10()
+```
+Number of Meetups attended
+```{r}
+pdx_meetup_members %>% 
+  filter(member_id != 245300246) %>% 
+  ggplot(aes(meetups_attended)) + 
+  geom_histogram() +
+  scale_x_log10()
+```
+last_attended
+```{r}
+x <- pdx_meetup_members %>% 
+  filter(member_id != 245300246, last_attended > as.Date("2020-01-01"))
+x %>% 
+  ggplot(aes(last_attended)) + 
+  geom_histogram(bins = 60) +
+  labs(title = "Last date attended since January 2020",
+       x = NULL,
+       subtitle = paste0("Showing ", nrow(x), " people"))
+  
+```
+
+```{r}
+df %>% count(group_name, sort = TRUE) %>% head(n = 25)
+```
+

@@ -1,0 +1,65 @@
+---
+title: "List members"
+author: "John D. Smith"
+date: "2021-11-24"
+output: html_document
+---
+
+
+```{r}
+library(tidyverse)
+library(stringr)
+library(lubridate)
+library(readr)
+library(readxl)
+library(janitor)
+library(here)
+library(rvest)
+```
+
+```{r}
+pdx_meetup_members <- 
+  read_csv(here("data", 
+                "Portland-Shambhala-Meditation-Center-Meetup_Member_List_on_2021-11-23.csv"),
+           col_types = "cccnccccnnnnnnncccc") %>% 
+  clean_names() %>% 
+  mutate(joined_group_on = mdy(joined_group_on),
+         last_visited_group_on = mdy(last_visited_group_on),
+         last_attended = mdy(last_attended),
+         url_of_member_profile = as.character(url_of_member_profile))
+```
+
+```{r}
+web_url <- pdx_meetup_members %>% 
+  mutate(web_url = as.character(url_of_member_profile)) %>% 
+  filter(last_attended > as.Date("2020-01-01")) %>% 
+  select(web_url)
+
+x <- as.vector(web_url$web_url)
+```
+
+
+```{r}
+get_group_profile <- function(url){
+  Sys.sleep(2)
+  # mutate(url = as.character(web_url))
+  group_list <- html_element(read_html(url), "#my-meetup-groups-list")
+  # html <- read_html(url, "#my-meetup-groups-list"))
+  temp_df <- tibble(all_lines = str_split((html_text2(group_list)), "\n")) %>% 
+    unnest(cols = c(all_lines))
+  n_groups <- nrow(temp_df) / 2
+  group_name <- as.vector(temp_df[((1:n_groups)*2) - 1,1])
+  role <-  as.vector(temp_df[((1:n_groups)*2), 1])
+  group_profile <- data.frame(group = group_name, role = role, url)
+  names(group_profile) <- c("group_name", "role", "url")
+  group_profile
+  }
+
+df <- purrr::map_df(as.character(x), get_group_profile)
+
+df <- df %>% mutate(member_id = parse_number(str_remove(url,"^.*members/"))) 
+```
+
+```{r}
+write_rds(df, here("data", "group_membership_attended_since_2020.Rds"))
+```
